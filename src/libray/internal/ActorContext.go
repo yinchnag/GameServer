@@ -18,3 +18,6 @@ func (that *ActorContext) Plush(receiver interfaces.IRceiver) {
 		fmt.Printf("Plush Receiver: %s \n", name)
 	}
 }
+
+func (that *ActorContext) Send(source uint32, data any, wait bool) {
+}

@@ -46,7 +46,7 @@ func (that *BaseReceiver) GetName() string {
 func (that *BaseReceiver) HandlerEvent() {
 }
 
-func (that *BaseReceiver) Dispay() {
+func (that *BaseReceiver) Destory() {
 	that.invald = nil
 }
 
