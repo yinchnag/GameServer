@@ -2,7 +2,8 @@ package internal
 
 import (
 	"fmt"
-	"server/src/library/interfaces"
+
+	"wgame_server/libray/interfaces"
 )
 
 type ActorContext struct {

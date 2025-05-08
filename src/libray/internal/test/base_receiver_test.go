@@ -1,8 +1,9 @@
 package test
 
 import (
-	"server/src/library/internal/base"
 	"testing"
+
+	"wgame_server/libray/internal/base"
 )
 
 type User struct {

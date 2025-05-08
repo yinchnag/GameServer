@@ -3,15 +3,16 @@ package base
 import (
 	"fmt"
 	"reflect"
-	"server/src/library/interfaces"
+
+	"wgame_server/libray/interfaces"
 )
+
+var ReceiverFunc []string = []string{}
 
 var (
-	ReceiverFunc []string = []string{}
+	_ interfaces.IRceiver = &BaseReceiver{}
+	_ interfaces.IModule  = &BaseReceiver{}
 )
-
-var _ interfaces.IRceiver = &BaseReceiver{}
-var _ interfaces.IModule = &BaseReceiver{}
 
 // 模块对象基础类
 // 继承(组合)该类的对象需主动调用Init函数
@@ -37,11 +38,12 @@ func (that *BaseReceiver) reflectFunc(val any) {
 		that.invald[method.Name] = method.Func
 	}
 }
+
 func (that *BaseReceiver) GetName() string {
 	return that.name
 }
-func (that *BaseReceiver) HandlerEvent() {
 
+func (that *BaseReceiver) HandlerEvent() {
 }
 
 func (that *BaseReceiver) Dispay() {
@@ -50,10 +52,8 @@ func (that *BaseReceiver) Dispay() {
 
 // 模块被启动时第一个调用
 func (that *BaseReceiver) Start() {
-
 }
 
 // 模块帧函数
 func (that *BaseReceiver) Update() {
-
 }
