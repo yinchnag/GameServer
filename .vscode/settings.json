@@ -1,0 +1,24 @@
+{
+  "go.autocompleteUnimportedPackages": true,
+  "go.useCodeSnippetsOnFunctionSuggest": true,
+  "go.useCodeSnippetsOnFunctionSuggestWithoutType": true,
+  "go.inferGopath": false,
+  "go.gotoSymbol.includeImports": true,
+  "go.gotoSymbol.includeGoroot": true,
+  "go.useLanguageServer": true,
+  "gopls": {
+    "formatting.gofumpt": true,
+    "analyses": {
+      "composites": false,
+      "structtag": false,
+      "cgocall": false,
+    }
+  },
+  "go.delveConfig": {
+    "debugAdapter": "legacy"
+  },
+  "go.testFlags": ["-v"],
+  "editor.snippetSuggestions": "bottom",
+  "wgame.excelPath": "../../Design/xlsx/",
+  "wgame.scvServerPath": "./bin/csv1/"
+}

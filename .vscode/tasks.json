@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build PB for client",// 构建PB
+            "type": "shell",
+            "command":"protoc",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "--proto_path=${workspaceFolder}/src/libray/define/PB",
+                "--${input:branch}=${workspaceFolder}/src/libray/define/PB",
+                "Protocol.proto",
+            ],
+        }
+    ],
+    "inputs": [
+        {
+            "id": "branch",
+            "type": "pickString",
+            "options": [
+                "go_out",
+                "csharp_out"
+            ],
+            "default": "go_out",
+            "description": "请输入编译模式"
+        }
+    ]
+}

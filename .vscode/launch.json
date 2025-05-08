@@ -1,0 +1,66 @@
+{
+  // 使用 IntelliSense 了解相关属性。
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  // GOOS=linux go build GIN_MODE=release -tags=jsoniter -o master.exe .\src\master\main.go
+  // GOOS=linux go build -tags=jsoniter -o zone.exe .\src\zone\main.go
+  // GOOS=linux go build -tags=jsoniter -o test.exe .\src\test\main.go
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "zone_server",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceRoot}/src/zone/main.go",
+      "env": {
+        "GIN_MODE": "debug"
+      },
+      "args": [],
+      "dlvLoadConfig": {
+        "followPointers": true,
+        "maxVariableRecurse": 1,
+        "maxStringLen": 512,
+        "maxArrayValues": 64,
+        "maxStructFields": -1
+      },
+    },
+    {
+      "name": "机器人测试",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/src/robot/main.go",
+      "args": [],
+      "env": {
+        "GIN_MODE": "debug"
+      }
+    },
+    {
+      "name": "单元测试所有",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/src/test",
+      "args": [
+        "-test.v"
+      ],
+      "env": {
+        "GIN_MODE": "debug"
+      }
+    },
+    {
+      "name": "单元测试当前文件",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${file}",
+      "args": [
+        "-test.v"
+      ],
+      "env": {
+        "GIN_MODE": "debug"
+      }
+    }
+  ]
+}

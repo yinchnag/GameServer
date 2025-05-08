@@ -1,0 +1,55 @@
+syntax = "proto3";
+package C2S_Protocol;
+option go_package = "./;PB";
+
+
+enum C2S_Player {
+	c2s_player_ 				= 0;
+	c2s_player_login			= 1;// 登录协议
+}
+
+message C2S_Player_Login 
+{
+	bytes account			= 1; // 账号
+	bytes password			= 2; // 密码
+}
+
+enum S2C_Player {
+	S2C_Player_ 	 = 0;
+	s2c_player_error = 1;
+	s2c_player_login = 2;
+}
+
+message S2C_Player_Error 
+{
+	uint32 error_code		= 1; // 错误码
+	bytes error_msg			= 2; // 错误信息
+}
+
+message S2C_Player_Login 
+{
+	uint32 server_id		= 1; // 区服id
+	bytes account			= 2; // 账号
+	bytes user_id         	= 3; // 账号ID
+	uint64 uid				= 4; // 玩家唯一ID
+	bytes uname				= 5; // 玩家角色名
+	uint32 iconid			= 6; // 头像ID
+	uint32 exp				= 7; // 玩家经验值
+	uint32 level			= 8; // 玩家等级
+	int64 regtime			= 9; // 角色创建时间
+	uint32 sex				= 10; // 玩家性别: 0未设置，1男, 2女
+	uint32 vip				= 11; // Vip等级
+	uint32 vip_exp			= 12; // vip经验
+	int64 power_uptime		= 14; // 下次体力恢复时间
+	int64 fight				= 15; // 战斗力
+	int64 game_server_time	= 16; // 服务器时间
+	bytes token				= 17; // 登录令牌
+	uint32 rename_num		= 18; // 改名次数
+	int32 zone_offset		= 19; // 时区偏移
+	int64 open_time 		= 20; // 开服时间
+	int64 favorite_day1		= 21; // 当日总数
+	int64 favorite_day2		= 22; // 昨日总数
+	uint32 favorite_count 	= 23; // 剩余点赞次数
+	int64 last_offline_time = 24; // 上次离线时间
+	repeated int64 favorite_players	= 25; // 点赞玩家列表
+}
