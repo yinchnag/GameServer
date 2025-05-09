@@ -2,7 +2,10 @@ package database
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"wgame_server/libray/core"
@@ -349,4 +352,397 @@ func (that *DbiRedis) Decr(key string) (int64, error) {
 // DecrByFloat decrements the key's value by the decrement provided
 func (that *DbiRedis) DecrByFloat(key string, decrement float64) (float64, error) {
 	return that.IncrByFloat(key, -decrement)
+}
+
+// HScan incrementally iterate over key's fields and values
+func (that *DbiRedis) HScan(key string, startIndex int64, pattern string, count int) (int64, []string, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, nil, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	results, err := redis.Values(conn.Do(c_HSCAN_COMMAND, that.Prefix+key, startIndex, c_MATCH_OPTION, pattern, c_COUNT_OPTION, count))
+	if err != nil {
+		return 0, nil, err
+	}
+	return parseScanResults(results)
+}
+
+// HSet sets a key's field/value pair
+func (that *DbiRedis) HSet(key string, field string, value string) (bool, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return false, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	code, err := redis.Int(conn.Do(c_HSET_COMMAND, that.Prefix+key, field, value))
+	return code > 0, err
+}
+
+// HMSet sets a key's field/value pair map
+func (that *DbiRedis) HMSet(key string, item map[string]interface{}) error {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return errors.New("no redis conn")
+	}
+	defer conn.Close()
+	reply, err := conn.Do(c_HMSET_COMMAND, redis.Args{}.Add(that.Prefix+key).AddFlat(item)...)
+	if err != nil {
+		return err
+	}
+	if reply != "OK" {
+		return fmt.Errorf("reply string is wrong!: %s", reply)
+	}
+	return nil
+}
+
+// HKeys retrieves a hash's keys
+func (that *DbiRedis) HKeys(key string) ([]string, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return nil, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Strings(conn.Do(c_HKEYS_COMMAND, that.Prefix+key))
+}
+
+// HExists determine's a key's field's existence
+func (that *DbiRedis) HExists(key string, field string) (bool, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return false, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Bool(conn.Do(c_HEXISTS_COMMAND, that.Prefix+key, field))
+}
+
+// HExists determine's a key's field's existence
+func (that *DbiRedis) HLen(key string) (int, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Int(conn.Do(c_HLEN_COMMAND, that.Prefix+key))
+}
+
+// HGet retrieves a key's field's value
+func (that *DbiRedis) HGet(key string, field string) (string, bool, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return "", false, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return toString(conn.Do(c_HGET_COMMAND, that.Prefix+key, field))
+}
+
+// HGetAll retrieves the key
+func (that *DbiRedis) HGetAll(key string, tag map[string]*DbiTableTag) (map[string]interface{}, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return nil, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	reply, err := conn.Do(c_HGETALL_COMMAND, that.Prefix+key)
+	return that.ConvertMap(reply, err, tag)
+}
+
+// HGetAll retrieves the key
+func (that *DbiRedis) HGetAllRaw(key string) (map[string]interface{}, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return nil, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	reply, err := conn.Do(c_HGETALL_COMMAND, that.Prefix+key)
+	return that.ConvertMapRaw(reply, err)
+}
+
+// HDel deletes a key's fields
+func (that *DbiRedis) HDel(key string, fields ...interface{}) (int64, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	args := append([]interface{}{that.Prefix + key}, fields...)
+	return redis.Int64(conn.Do(c_HDEL_COMMAND, args...))
+}
+
+// HIncrBy increments the key's field's value by the increment provided
+func (that *DbiRedis) HIncrBy(key string, field string, increment int64) (int64, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Int64(conn.Do(c_HINCRBY_COMMAND, that.Prefix+key, field, increment))
+}
+
+// HIncr increments the key's field's value
+func (that *DbiRedis) HIncr(key string, field string) (int64, error) {
+	return that.HIncrBy(key, field, 1)
+}
+
+// HIncrByFloat increments the key's field's value by the increment provided
+func (that *DbiRedis) HIncrByFloat(key string, field string, increment float64) (float64, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Float64(conn.Do(c_HINCRBYFLOAT_COMMAND, that.Prefix+key, field, increment))
+}
+
+// HDecr decrements the key's field's value
+func (that *DbiRedis) HDecr(key string, field string) (int64, error) {
+	return that.HIncrBy(key, field, -1)
+}
+
+// HDecrBy decrements the key's field's value by the decrement provided
+func (that *DbiRedis) HDecrBy(key string, field string, decrement int64) (int64, error) {
+	return that.HIncrBy(key, field, -decrement)
+}
+
+// HDecrByFloat decrements the key's field's value by the decrement provided
+func (that *DbiRedis) HDecrByFloat(key string, field string, decrement float64) (float64, error) {
+	return that.HIncrByFloat(key, field, -decrement)
+}
+
+// 查询key过期时间
+func (that *DbiRedis) GetTTL(key string) (int, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Int(conn.Do(c_TTL_COMMAND, that.Prefix+key))
+}
+
+// 加入有序集合（自顶向下，积分从小到大排列）
+// score,member [score,member]
+func (that *DbiRedis) ZAdd(key string, fields ...interface{}) (interface{}, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	args := append([]interface{}{that.Prefix + key}, fields...)
+	reply, err := conn.Do(c_ZADD_COMMAND, args...)
+	return reply, err
+}
+
+// 获取积分
+func (that *DbiRedis) ZScore(key string, member interface{}) (int64, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Int64(conn.Do(c_ZSCORE_COMMAND, that.Prefix+key, member))
+}
+
+// 获取区间积分
+// min取值 (0 0 -inf
+// max取值 (0 0 +inf
+func (that *DbiRedis) ZRangeByScore(key string, min interface{}, max interface{}, limit ...int) ([]int64, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return nil, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	if len(limit) >= 2 {
+		return redis.Int64s(conn.Do(c_ZRANGEBYSCORE_COMMAND, that.Prefix+key, min, max, "LIMIT", limit[0], limit[1]))
+	} else {
+		return redis.Int64s(conn.Do(c_ZRANGEBYSCORE_COMMAND, that.Prefix+key, min, max))
+	}
+}
+
+// 删除有序集合成员
+// member [member]
+func (that *DbiRedis) ZRem(key string, fields ...interface{}) (int, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	args := append([]interface{}{that.Prefix + key}, fields...)
+	return redis.Int(conn.Do(c_ZREM_COMMAND, args...))
+}
+
+// 获取有序集合长度
+func (that *DbiRedis) ZCard(key string) (int, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Int(conn.Do(c_ZCARD_COMMAND, that.Prefix+key))
+}
+
+// 向集合添加一个或多个成员
+func (that *DbiRedis) SAdd(key string, fields ...interface{}) (interface{}, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	args := append([]interface{}{that.Prefix + key}, fields...)
+	reply, err := conn.Do(c_SADD_COMMAND, args...)
+	return reply, err
+}
+
+// 获取集合的成员数
+func (that *DbiRedis) SCard(key string) (int, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return redis.Int(conn.Do(c_SCARD_COMMAND, that.Prefix+key))
+}
+
+// 删除集合成员
+// member [member]
+func (that *DbiRedis) SRem(key string, fields ...interface{}) (int, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	args := append([]interface{}{that.Prefix + key}, fields...)
+	return redis.Int(conn.Do(c_SREM_COMMAND, args...))
+}
+
+// 移除并返回集合中的一个随机元素
+func (that *DbiRedis) SPop(key string) (string, bool, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return "", false, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	return toString(conn.Do(c_SPOP_COMMAND, that.Prefix+key))
+}
+
+// 迭代集合中的元素
+func (that *DbiRedis) SScan(key string, startIndex int64, pattern string) (int64, []string, error) {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return 0, nil, errors.New("no redis conn")
+	}
+	defer conn.Close()
+	results, err := redis.Values(conn.Do(c_SSCAN_COMMAND, that.Prefix+key, startIndex, c_MATCH_OPTION, pattern))
+	if err != nil {
+		return 0, nil, err
+	}
+	return parseScanResults(results)
+}
+
+// StringMap is a helper that converts an array of strings (alternating key, value)
+// into a map[string]string. The HGETALL and CONFIG GET commands return replies in this format.
+// Requires an even number of values in result.
+func (that *DbiRedis) ConvertMap(result interface{}, err error, tag map[string]*DbiTableTag) (map[string]interface{}, error) {
+	values, err := redis.Values(result, err)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("redigo: StringMap expects even number of values result, got %d", len(values))
+	}
+
+	m := make(map[string]interface{}, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("redigo: StringMap key[%d] not a bulk string value, got %T", i, values[i])
+		}
+		tagKey := string(key)
+		tagVal := tag[tagKey]
+		if tagVal == nil {
+			continue
+		}
+		value := values[i+1]
+		switch tagVal.Kind {
+		case reflect.Int8:
+			value8, _ := redis.Int(value, nil)
+			value = int8(value8)
+		case reflect.Int16:
+			value16, _ := redis.Int(value, nil)
+			value = int16(value16)
+		case reflect.Int32:
+			value32, _ := redis.Int(value, nil)
+			value = int32(value32)
+		case reflect.Int64:
+			value, _ = redis.Int64(value, nil)
+		case reflect.Int:
+			value, _ = redis.Int(value, nil)
+		case reflect.Uint8:
+			value8, _ := redis.Int(value, nil)
+			value = uint8(value8)
+		case reflect.Uint16:
+			value16, _ := redis.Int(value, nil)
+			value = uint16(value16)
+		case reflect.Uint32:
+			value32, _ := redis.Int(value, nil)
+			value = uint32(value32)
+		case reflect.Uint64:
+			value, _ = redis.Uint64(value, nil)
+		case reflect.Float32:
+			value64, _ := redis.Float64(value, nil)
+			value = float32(value64)
+		case reflect.Float64:
+			value, _ = redis.Float64(value, nil)
+		case reflect.String:
+			value, _ = redis.String(value, nil)
+		default:
+			continue
+		}
+		m[tagKey] = value
+	}
+	return m, nil
+}
+
+// StringMap is a helper that converts an array of strings (alternating key, value)
+// into a map[string]string. The HGETALL and CONFIG GET commands return replies in this format.
+// Requires an even number of values in result.
+func (that *DbiRedis) ConvertMapRaw(result interface{}, err error) (map[string]interface{}, error) {
+	values, err := redis.Values(result, err)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("redigo: StringMap expects even number of values result, got %d", len(values))
+	}
+
+	m := make(map[string]interface{}, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("redigo: StringMap key[%d] not a bulk string value, got %T", i, values[i])
+		}
+		tagKey := string(key)
+		tagVal, _ := redis.String(values[i+1], nil)
+		m[tagKey] = tagVal
+	}
+	return m, nil
+}
+
+// 连接字符串
+func (that *DbiRedis) Redis_JoinKey(params ...interface{}) string {
+	tmp := make([]string, len(params))
+	for i := 0; i < len(params); i++ {
+		tmp[i] = fmt.Sprint(params[i])
+	}
+	return strings.Join(tmp, ":")
+}
+
+// 获取加锁字符串
+func (that *DbiRedis) Redis_JoinLockKey(params ...interface{}) string {
+	tmp := make([]string, len(params))
+	for i := 0; i < len(params); i++ {
+		tmp[i] = fmt.Sprint(params[i])
+	}
+	return "lock:" + strings.Join(tmp, ":")
 }
