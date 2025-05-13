@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -119,6 +120,19 @@ func toString(reply interface{}, err error) (string, bool, error) {
 func toBool(reply interface{}, err error) (bool, error) {
 	_, ok, e := toString(reply, err)
 	return ok, e
+}
+
+type DbiRedisPipeline struct {
+	conn redis.Conn
+}
+
+func (that *DbiRedisPipeline) Send(commandName string, args ...interface{}) error {
+	return nil
+}
+
+func (that *DbiRedisPipeline) Exec(ctx context.Context) error {
+	that.conn.Send("EXEC")
+	return nil
 }
 
 type DbiRedis struct {
@@ -636,6 +650,14 @@ func (that *DbiRedis) SScan(key string, startIndex int64, pattern string) (int64
 		return 0, nil, err
 	}
 	return parseScanResults(results)
+}
+
+func (that *DbiRedis) Pipeline() {
+	conn := that.GetRedisConn()
+	if conn == nil {
+		return
+	}
+	defer conn.Close()
 }
 
 // StringMap is a helper that converts an array of strings (alternating key, value)

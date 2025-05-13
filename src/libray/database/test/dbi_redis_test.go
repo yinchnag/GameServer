@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strconv"
 	"testing"
 
 	"wgame_server/libray/database"
@@ -163,5 +164,15 @@ func TestRedisIncrBy(t *testing.T) {
 		t.Error(err)
 	} else {
 		t.Log(result)
+	}
+}
+
+func BenchmarkRedisSet(b *testing.B) {
+	redis := GetDbiRedis()
+
+	key := make([]byte, 0, 32) // 预分配足够大的缓冲区
+	for i := 0; i < b.N; i++ {
+		key = strconv.AppendInt(key[:0], int64(i), 10) // 复用内存
+		redis.Set("test"+string(key), "test")
 	}
 }
