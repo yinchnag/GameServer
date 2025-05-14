@@ -39,14 +39,12 @@ func (that *BaseReceiver) Init(val any) {
 func (that *BaseReceiver) SetInvokerAll(val any) {
 	instVal := reflect.ValueOf(val)
 	instType := instVal.Type()
-	that.name = instType.Name()
+	that.name = instType.Elem().Name()
 	methodNum := instType.NumMethod()
 	for i := 0; i < methodNum; i++ {
 		name := instType.Method(i).Name
 		method := instVal.Method(i)
 		if method.CanInterface() {
-			kind := method.Kind()
-			_ = kind
 			that.SetInvoker(name, method)
 		}
 	}
@@ -107,6 +105,9 @@ func (that *BaseReceiver) Destory() {
 // 模块被启动时第一个调用
 func (that *BaseReceiver) Start() {
 }
+func (that *BaseReceiver) Load()      {}
+func (that *BaseReceiver) LaterLoad() {}
+func (that *BaseReceiver) Save()      {}
 
 // 模块帧函数
 func (that *BaseReceiver) Update() {
