@@ -7,4 +7,5 @@ type IModule interface {
 	LaterLoad()
 	Save()
 	Update()
+	Destory()
 }

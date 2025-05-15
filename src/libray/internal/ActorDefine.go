@@ -1,7 +1,11 @@
 package internal
 
 const (
-	ACTORID_OVERLOAD = 1024
+	ACTORID_OVERLOAD     = 1024
+	ACTORID_SUSPEND      = 10
+	ACTORID_REMOTE_SHIFT = 24
+	ACTORID_SLOT_SIZE    = 4
+	ACTORID_MASK         = 0xffffff
 )
 
 // 运行权重

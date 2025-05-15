@@ -9,9 +9,29 @@ import (
 	"github.com/Workiva/go-datastructures/queue"
 )
 
+func newActorRunner(ctx *ActorContext, options ...ActorConfigOption) *ActorRunner {
+	config := ActorConfigure(options...)
+	return newActorRunnerWithConfig(ctx, config)
+}
+
+func newActorRunnerWithConfig(ctx *ActorContext, config *actorConfig) *ActorRunner {
+	runner := &ActorRunner{
+		actorID:       0,
+		queue:         queue.NewRingBuffer(config.Capacity),
+		dropping:      config.Dropping,
+		runCount:      0,
+		overload:      0,
+		overloadLimit: ACTORID_OVERLOAD,
+		inGlobal:      1,
+		ctx:           ctx,
+		actorSystem:   ctx.ActorSystem,
+	}
+	return runner
+}
+
 type ActorRunner struct {
 	actorID       uint32 // ActorID
-	queue         queue.RingBuffer
+	queue         *queue.RingBuffer
 	dropping      bool          // 是否丢去溢出消息
 	runCount      uint64        // 执行次数
 	overload      uint64        // 超载数量

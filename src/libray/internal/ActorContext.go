@@ -11,6 +11,7 @@ type ActorContext struct {
 	workerIdx   int                // 所在工作器索引
 	suspendChan chan *ActorMessage // 挂起消息通道
 	suspendNum  int32              // 挂起消息数量
+	Profile     bool               // 是否开启性能分析
 	ref         int32              // 引用计数
 }
 
