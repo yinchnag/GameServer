@@ -2,6 +2,7 @@ package internal
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"wgame_server/libray/core"
 
@@ -49,4 +50,74 @@ func (that *ActorRunner) send(data any) {
 		that.inGlobal = 1
 		that.actorSystem.Push(that.ctx)
 	}
+}
+
+func (that *ActorRunner) pop() any {
+	that.lock.Lock()
+	defer that.lock.Unlock()
+	count := that.queue.Len()
+	if count > 0 {
+		msg, _ := that.queue.Get()
+		for count > that.overloadLimit {
+			that.overload = count
+			that.overloadLimit *= 2
+			core.Logger.Errorf("[%s]actor overload len=%d limit=%d", that.ctx.Alias(), count, that.overloadLimit)
+		}
+		return msg
+	}
+	that.overloadLimit = ACTORID_OVERLOAD
+	that.inGlobal = 0
+	return nil
+}
+
+func (that *ActorRunner) recover(ctx *ActorContext) bool {
+	if atomic.LoadInt32(&ctx.suspendNum) < 1 {
+		return false
+	}
+	select {
+	case msg := <-ctx.suspendChan:
+		atomic.AddInt32(&ctx.suspendNum, -1)
+		msg.Done()
+		return true
+	default:
+		return false
+	}
+}
+
+func (that *ActorRunner) run(ctx *ActorContext, weight int) {
+	for i, count := 0, 1; i < count; i++ {
+		if atomic.LoadInt32(&ctx.ref) != 0 {
+			core.Logger.Infof("[%s] repeat in global", that.ctx.Alias())
+			return
+		}
+		data := that.pop()
+		if data == nil {
+			return
+		}
+		if i == 0 && weight > 0 {
+			count = that.length()
+			count >>= weight
+		}
+		if that.overload != 0 {
+			core.Logger.Errorf("actor overload,message queue length=%d", that.overload)
+			that.overload = 0
+			switch msg := data.(type) {
+			case *ActorMessage:
+				if atomic.LoadInt32(&msg.suspend) != 2 {
+					msg.Result, msg.Err = ctx.Receiver.Invoker(msg.UID, msg.FunName, msg.Args...)
+					msg.Suspend(true)
+				} else {
+					srcAlias := core.TernaryF(msg.SourceCtx != nil, func() string { return msg.SourceCtx.Alias() }, "nil")
+					core.Logger.Debugf("[%s] suspend timeout UID=%d funName=%s等待返回 src%s", msg.Alias, msg.UID, msg.FunName, srcAlias)
+					msg.Free()
+				}
+			case *actorSuspend:
+				that.recover(msg.ctx)
+				return // 唤醒挂起协程并结束当前协程
+			default:
+				ctx.Receiver.Receive(msg)
+			}
+		}
+	}
+	that.actorSystem.Push(ctx)
 }

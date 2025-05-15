@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"wgame_server/libray/core"
 	"wgame_server/libray/interfaces"
 )
 
@@ -96,6 +97,10 @@ func (that *BaseReceiver) GetName() string {
 }
 
 func (that *BaseReceiver) HandlerEvent() {
+}
+
+func (that *BaseReceiver) Receive(msg any) {
+	core.Logger.Infof("[%s]接收消息%v", that.GetName(), msg)
 }
 
 func (that *BaseReceiver) Destory() {
