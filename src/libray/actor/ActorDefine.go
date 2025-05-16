@@ -1,4 +1,4 @@
-package internal
+package actor
 
 const (
 	ACTORID_OVERLOAD     = 1024

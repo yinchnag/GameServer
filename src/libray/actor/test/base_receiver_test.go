@@ -5,15 +5,15 @@ import (
 	"strconv"
 	"testing"
 
-	"wgame_server/libray/internal/base"
+	"wgame_server/libray/internal"
 )
 
 type User struct {
-	base.BaseReceiver
+	internal.ActorReceiver
 }
 
 func (that *User) Init() {
-	that.BaseReceiver.Init(that)
+	that.ActorReceiver.Init(that)
 }
 
 func (that *User) Action(num int) string {

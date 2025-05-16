@@ -2,6 +2,10 @@ package main
 
 import (
 	_ "net/http/pprof"
+	"sync"
+
+	"wgame_server/libray/actor"
+	"wgame_server/module/activity"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -13,7 +17,7 @@ type Product struct {
 	Price uint
 }
 
-func test() {
+func Test() {
 	dsn := "root:123456@tcp(127.0.0.1:3306)/test?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -42,5 +46,13 @@ func test() {
 }
 
 func main() {
-	test()
+	actorSystem := actor.NewActorSystem()
+	actorSystem.AllocActor(func() actor.IRceiver { return &activity.ActivityActor{} })
+	actorSystem.Start()
+	rets, err := actorSystem.ModInvoke(nil, 0, "ActivityActor", "GetInt", "1")
+	ret, _ := rets[0].Interface().(int), err
+	_ = ret
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	wg.Wait()
 }

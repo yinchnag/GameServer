@@ -1,8 +1,9 @@
-package base
+package actor
 
 import (
 	"fmt"
 	"reflect"
+	"sync"
 
 	"wgame_server/libray/core"
 	"wgame_server/libray/interfaces"
@@ -18,26 +19,33 @@ type FuncInfo struct {
 }
 
 var (
-	_ interfaces.IRceiver = &BaseReceiver{}
-	_ interfaces.IModule  = &BaseReceiver{}
+	_ IRceiver           = &ActorReceiver{}
+	_ interfaces.IModule = &ActorReceiver{}
 )
 
 // 模块对象基础类
 // 继承(组合)该类的对象需主动调用Init函数
-type BaseReceiver struct {
-	invokers map[string]*FuncInfo // 所有反射获得的函数
-	name     string               // 对象名称
+type ActorReceiver struct {
+	name        string                 // 对象名称
+	invokers    map[string]*FuncInfo   // 所有反射获得的函数
+	pluginsLock sync.RWMutex           // 读写锁
+	plugins     map[int64]*ActorPlugin // 插件列表
+	ctx         *ActorContext          // 上下文
 }
+
+func (that *ActorReceiver) Init() {}
 
 // 初始化对象
 // 在任何情况下创建出对象后该函数一定是第一个调用，否则会出现painc
-func (that *BaseReceiver) Init(val any) {
+func (that *ActorReceiver) init(ctx *ActorContext, val any) {
+	that.ctx = ctx
 	that.invokers = make(map[string]*FuncInfo)
 	that.SetInvokerAll(val)
+	val.(interfaces.IModule).Init()
 }
 
 // 设置对象中所有函数的反射
-func (that *BaseReceiver) SetInvokerAll(val any) {
+func (that *ActorReceiver) SetInvokerAll(val any) {
 	instVal := reflect.ValueOf(val)
 	instType := instVal.Type()
 	that.name = instType.Elem().Name()
@@ -52,7 +60,7 @@ func (that *BaseReceiver) SetInvokerAll(val any) {
 }
 
 // 判断是否为函数，如果是，则记录
-func (that *BaseReceiver) SetInvoker(funcName string, method reflect.Value) {
+func (that *ActorReceiver) SetInvoker(funcName string, method reflect.Value) {
 	if method.Kind() != reflect.Func {
 		return
 	}
@@ -68,10 +76,10 @@ func (that *BaseReceiver) SetInvoker(funcName string, method reflect.Value) {
 		info.outputArgs = append(info.outputArgs, typeOf.Out(i).Kind())
 	}
 	that.invokers[funcName] = info
-	fmt.Printf("bind method: %s\n", funcName)
+	core.Logger.Infof("module %s bind method: %s\n", that.name, funcName)
 }
 
-func (that *BaseReceiver) Invoker(uid int64, funcName string, args ...any) (_ []reflect.Value, err error) {
+func (that *ActorReceiver) Invoker(uid int64, funcName string, args ...any) (_ []reflect.Value, err error) {
 	if invoker, ok := that.invokers[funcName]; ok {
 		defer func() {
 			if err := recover(); err != nil {
@@ -92,28 +100,48 @@ func (that *BaseReceiver) Invoker(uid int64, funcName string, args ...any) (_ []
 	return nil, fmt.Errorf("没有找到函数 %s", funcName)
 }
 
-func (that *BaseReceiver) GetName() string {
+func (that *ActorReceiver) GetName() string {
 	return that.name
 }
 
-func (that *BaseReceiver) HandlerEvent() {
+func (that *ActorReceiver) GetNumOut(funName string) int {
+	info, ok := that.invokers[funName]
+	if ok {
+		return 0
+	}
+	return len(info.inputArgs)
 }
 
-func (that *BaseReceiver) Receive(msg any) {
+func (that *ActorReceiver) HandlerEvent() {
+}
+
+func (that *ActorReceiver) Receive(msg any) {
 	core.Logger.Infof("[%s]接收消息%v", that.GetName(), msg)
 }
 
-func (that *BaseReceiver) Destory() {
+func (that *ActorReceiver) SetPlugin(uid int64, plugin *ActorPlugin, host any) {
+	that.pluginsLock.Lock()
+	that.plugins[uid] = plugin
+	that.pluginsLock.Unlock()
+	plugin.SetContext(that.ctx)
+}
+
+func (that *ActorReceiver) Destory() {
 	that.invokers = nil
 }
 
 // 模块被启动时第一个调用
-func (that *BaseReceiver) Start() {
-}
-func (that *BaseReceiver) Load()      {}
-func (that *BaseReceiver) LaterLoad() {}
-func (that *BaseReceiver) Save()      {}
+func (that *ActorReceiver) Start()     {}
+func (that *ActorReceiver) Load()      {}
+func (that *ActorReceiver) LaterLoad() {}
+func (that *ActorReceiver) Save()      {}
 
 // 模块帧函数
-func (that *BaseReceiver) Update() {
+func (that *ActorReceiver) Update() {}
+
+// 插件模式
+type ActorPlugin ActorReceiver
+
+func (that *ActorPlugin) SetContext(ctx *ActorContext) {
+	that.ctx = ctx
 }

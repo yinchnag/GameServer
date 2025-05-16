@@ -3,24 +3,28 @@ package server
 import (
 	"sync/atomic"
 
+	"wgame_server/libray/actor"
 	"wgame_server/libray/core"
 	"wgame_server/libray/define/PB"
 	"wgame_server/libray/entity"
 	"wgame_server/libray/manager"
 	"wgame_server/libray/module"
 	"wgame_server/libray/network"
+	"wgame_server/module/activity"
 	"wgame_server/module/player"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type ZoneServer struct {
-	wsServer *network.WsServer // ws服务器
-	alive    int32             // 是否激活
-	modMgr   *module.ModMgr
+	wsServer    *network.WsServer // ws服务器
+	alive       int32             // 是否激活
+	modMgr      *module.ModMgr
+	actorSystem *actor.ActorSystem
 }
 
 func (that *ZoneServer) Start() {
+	that.startActor()
 	network.WGServer = that
 	if atomic.LoadInt32(&that.alive) == 1 {
 		return
@@ -40,6 +44,11 @@ func (that *ZoneServer) Start() {
 	that.wsServer = &network.WsServer{}
 	that.wsServer.Init()
 	that.wsServer.Start(":8000", 1000)
+}
+
+func (that *ZoneServer) startActor() {
+	that.actorSystem = actor.NewActorSystem()
+	that.actorSystem.AllocActor(func() actor.IRceiver { return &activity.ActivityActor{} })
 }
 
 func (that *ZoneServer) LoadConfig() {

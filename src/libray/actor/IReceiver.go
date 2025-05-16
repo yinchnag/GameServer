@@ -1,10 +1,11 @@
-package interfaces
+package actor
 
 import "reflect"
 
 type IRceiver interface {
-	Init(any)
+	init(*ActorContext, any)
 	GetName() string
+	GetNumOut(string) int
 	Receive(any)
 	Invoker(int64, string, ...any) ([]reflect.Value, error)
 	HandlerEvent()
