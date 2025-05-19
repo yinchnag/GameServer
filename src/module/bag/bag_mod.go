@@ -1,9 +1,10 @@
 package bag
 
-import "wgame_server/libray/module"
+import "wgame_server/libray/actor"
 
 type BagMod struct {
-	module.ModObj
+	data map[string]int
+	actor.ActorReceiver
 }
 
 func (that *BagMod) GetItem(itemId int) {
